@@ -1,0 +1,6 @@
+Loading scopes…
+Searching for existing projects…
+> Auto-detected Project Settings for Vite
+
+Error: Project names can be up to 100 characters long and must be lowercase. They can include letters, digits, and the following characters: '.', '_', '-'. However, they cannot contain the sequence '---'. (400)
+Learn More: https://vercel.com/docs/projects/overview#project-name

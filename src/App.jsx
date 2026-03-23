@@ -38,9 +38,21 @@ function App() {
   const handTrackingCleanup = useRef(null);
   const recognitionRef = useRef(null);
 
+  const inCallRef = useRef(inCall);
   useEffect(() => {
-    // 1. Initialize PeerJS
-    const peer = new Peer();
+    inCallRef.current = inCall;
+  }, [inCall]);
+
+  useEffect(() => {
+    // 1. Initialize PeerJS with reliable STUN servers
+    const peer = new Peer({
+      config: {
+        iceServers: [
+          { urls: 'stun:stun.l.google.com:19302' },
+          { urls: 'stun:global.stun.twilio.com:3478' }
+        ]
+      }
+    });
     peer.on('open', (id) => setPeerId(id));
 
     peer.on('call', (call) => {
@@ -102,7 +114,7 @@ function App() {
 
       // Auto-restart if it stops to keep continuous listening during call
       recognitionRef.current.onend = () => {
-        if (inCall && recognitionRef.current) {
+        if (inCallRef.current && recognitionRef.current) {
           try {
             recognitionRef.current.start();
           } catch (e) { }
@@ -111,12 +123,13 @@ function App() {
     }
 
     return () => {
-      if (peerInstance.current) peerInstance.current.destroy();
+      // Destroy local scoped peer so strict-mode doesn't trash active ones
+      peer.destroy();
       stopLocalStream();
       stopSpeechRecognition();
       if (handTrackingCleanup.current) handTrackingCleanup.current();
     };
-  }, [inCall]);
+  }, []);
 
   const startSpeechRecognition = () => {
     if (recognitionRef.current) {
