@@ -1,22 +1,10 @@
 import { useState, useEffect, useRef } from 'react';
 import Peer from 'peerjs';
 import { initializeHandTracking } from './gestureDetection';
+import { videoMap } from './videoMap';
 import './App.css';
 
-// Mapping spoken words to basic emoji gestures for prototype since we lack complete video datasets
-const wordToEmoji = {
-  "hello": "👋", "hi": "👋", "hey": "👋",
-  "good": "👍", "yes": "👍", "fine": "👍",
-  "bad": "👎", "no": "👎",
-  "peace": "✌️", "two": "✌️",
-  "love": "🤟", "rock": "🤘",
-  "stop": "✋", "wait": "✋",
-  "ok": "👌", "okay": "👌", "perfect": "👌",
-  "pray": "🙏", "thanks": "🙏", "thank": "🙏", "please": "🙏",
-  "i": "👉", "you": "👈", "me": "👉",
-  "look": "👀",
-  "one": "☝️"
-};
+// Using dynamically generated videoMap from the Part1 and Part2 dataset folders
 
 function App() {
   const [inCall, setInCall] = useState(false);
@@ -26,7 +14,7 @@ function App() {
 
   // Speech to Sign state
   const [transcribedText, setTranscribedText] = useState("");
-  const [currentAvatarEmoji, setCurrentAvatarEmoji] = useState("👋");
+  const [currentVideoWord, setCurrentVideoWord] = useState("");
 
   const [isMicOn, setIsMicOn] = useState(true);
   const [isVideoOn, setIsVideoOn] = useState(true);
@@ -101,14 +89,30 @@ function App() {
         const currentText = finalTranscript || interimTranscript;
         setTranscribedText(currentText);
 
-        // Change avatar emoji based on last seen keyword
-        const words = currentText.toLowerCase().trim().split(/\s+/);
-        for (let i = words.length - 1; i >= 0; i--) {
-          const cleanWord = words[i].replace(/[^a-z]/g, "");
-          if (wordToEmoji[cleanWord]) {
-            setCurrentAvatarEmoji(wordToEmoji[cleanWord]);
-            break;
+        // Interpret transcribed speech to find a matching video from our 2000+ dataset
+        const wordsList = currentText.toLowerCase().replace(/[^a-z0-9\s]/g, ' ').trim().split(/\s+/);
+        
+        let foundWord = null;
+        const maxPhraseLength = 4; // Check up to 4 word phrases
+        
+        // Scan for matching phrases from the end of the transcription backwards
+        searchLoop: for (let endIndex = wordsList.length; endIndex > 0; endIndex--) {
+          for (let len = maxPhraseLength; len >= 1; len--) {
+            const startIndex = endIndex - len;
+            if (startIndex >= 0) {
+              const phrase = wordsList.slice(startIndex, endIndex).join(' ');
+              if (videoMap[phrase]) {
+                foundWord = phrase;
+                break searchLoop;
+              }
+            }
           }
+        }
+        
+        if (foundWord) {
+          setCurrentVideoWord((prevVideoWord) => {
+            return prevVideoWord === foundWord ? prevVideoWord : foundWord;
+          });
         }
       };
 
@@ -306,10 +310,25 @@ function App() {
           />
         </div>
 
-        {/* Avatar Area (Plays gestures based on remote audio) */}
+        {/* Avatar Area (Plays ISL Video clip based on remote audio) */}
         {inCall && (
-          <div className="avatar-container" title="Sign Language Avatar">
-            <span style={{ fontSize: '4rem', transition: 'all 0.3s' }}>{currentAvatarEmoji}</span>
+          <div className="avatar-container" title="Sign Language Avatar" style={{ overflow: 'hidden', padding: 0, border: '2px solid var(--primary)', background: '#000', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+            {currentVideoWord && videoMap[currentVideoWord] ? (
+              <video
+                key={currentVideoWord} // changing key forces video playback to re-start
+                src={videoMap[currentVideoWord]}
+                autoPlay
+                muted // Muted because it's just the sign language
+                controls={false}
+                playsInline
+                loop
+                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+              />
+            ) : (
+              <div style={{ color: '#aaa', padding: '10px', fontSize: '0.8rem', textAlign: 'center', height: '100%', display: 'flex', alignItems: 'center' }}>
+                Waiting for speech...
+              </div>
+            )}
             {transcribedText && (
               <div style={{ position: 'absolute', bottom: '-25px', right: 0, background: 'rgba(0,0,0,0.5)', padding: '2px 6px', borderRadius: '4px', fontSize: '0.7rem', color: '#fff', whiteSpace: 'nowrap' }}>
                 {transcribedText.split(' ').slice(-3).join(' ')}...
