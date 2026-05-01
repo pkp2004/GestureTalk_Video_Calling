@@ -5,7 +5,7 @@ const rootDir = __dirname;
 const publicDir = path.join(rootDir, 'public');
 
 // Move folders to public if they are not already there
-const dirsToScan = ['Part1', 'Part2'];
+const dirsToScan = ['demo_dataset'];
 dirsToScan.forEach(part => {
     const srcPath = path.join(rootDir, part);
     const destPath = path.join(publicDir, part);
